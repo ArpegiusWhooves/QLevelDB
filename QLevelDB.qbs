@@ -56,7 +56,9 @@ Project {
         files: [
             "src/qlvldb.cpp",
             "src/qleveldb.h",
-            "src/qleveldb.cpp"
+            "src/qleveldb.cpp",
+            "src/qleveldbjsonlexicalcomparator.h",
+            "src/qleveldbjsonlexicalcomparator.cpp"
         ]
 
         Depends { name: "Qt"; submodules: ["core"] }

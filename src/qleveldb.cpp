@@ -3,26 +3,30 @@
 
 #include <leveldb/db.h>
 #include <leveldb/options.h>
-#include <QJsonDocument>
+#include "qleveldbjsonlexicalcomparator.h"
+
+
+#include <cmath>
+
+#include <QDebug>
 
 QMap<QString, QWeakPointer<leveldb::DB> > QLevelDB::openDBFiles;
 QReadWriteLock QLevelDB::openDBFilesLock;
 
-class JSONComparator: public leveldb::Comparator {
-
-public:
-    Compare(const leveldb::Slice& a, const leveldb::Slice& b) const {
-        QJsonDocument.fromBinaryData(QByteArray(a.data(),a.sze()))
-
-    };
-    const char* Name() const { return "JSONComparator"; }
-};
-
 void QLevelDB::open()
 {
+    QString fpath = m_filepath;
     QFileInfo fi(m_filepath);
-    QString fpath= fi.canonicalFilePath();
-    if(!fi.exists()) return;
+    bool createNewDatabase = true;
+    if(fi.exists()) {
+        createNewDatabase=false;
+        fpath= fi.canonicalFilePath();
+        qDebug() << "Openeing " << fpath;
+    }
+    else {
+        qDebug() << "Creating " << fpath;
+    }
+
     openDBFilesLock.lockForRead();
     OpenDBFiles::iterator i= openDBFiles.lowerBound(fpath);
     if( i != openDBFiles.end() && i.key() == fpath ) {
@@ -42,8 +46,12 @@ void QLevelDB::open()
             }
         }
         leveldb::Options options;
+        options.comparator = new QLevelDBJsonLexicalComparator;
+        options.create_if_missing =  createNewDatabase;
         leveldb::DB * ptr;
         leveldb::Status s= leveldb::DB::Open(options,fpath.toStdString(),&ptr);
+
+        qDebug() << "Opened status " << QString::fromStdString(s.ToString());
 
         if(!s.ok()) {
             openDBFilesLock.unlock();
@@ -70,4 +78,26 @@ void QLevelDB::close(leveldb::DB* db)
 QLevelDB::QLevelDB(QObject *parent) :
     QObject(parent)
 {
+}
+
+void QLevelDB::set(QJsonDocument const& key, QJsonDocument const& value)
+{
+    assert(!!db);
+    leveldb::WriteOptions op;
+    QByteArray k= key.toBinaryData();
+    QByteArray v= value.toBinaryData();
+    leveldb::Status s= db->Put(op, leveldb::Slice(k.data(),k.size()), leveldb::Slice( v.data(),v.size()) );
+    qDebug() << "Write status " << QString::fromStdString(s.ToString());
+}
+
+QJsonDocument QLevelDB::get(QJsonDocument const& key)
+{
+    assert(!!db);
+    leveldb::ReadOptions op;
+    QByteArray k= key.toBinaryData();
+    std::string s;
+    leveldb::Status st= db->Get(op,leveldb::Slice(k.data(),k.size()),&s);
+    qDebug() << "Read status " << QString::fromStdString(st.ToString());
+    return QJsonDocument::fromBinaryData( QByteArray(s.data(), s.size()) );
+
 }

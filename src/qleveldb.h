@@ -5,6 +5,7 @@
 #include <QMap>
 #include <QWeakPointer>
 #include <QReadWriteLock>
+#include <QJsonDocument>
 
 namespace leveldb {
     class DB;
@@ -31,6 +32,9 @@ public:
     {
         return m_filepath;
     }
+
+    Q_INVOKABLE void set( QJsonDocument const& key, QJsonDocument const& value );
+    Q_INVOKABLE QJsonDocument get( QJsonDocument const& key );
 
     signals:
 
